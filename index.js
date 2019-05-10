@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         missing settings for sourcegraph(MSFS)
 // @namespace    https://greasyfork.org
-// @version      0.1
+// @version      1.0.0
 // @description  add extra settings to sourcegraph
 // @author       pot-code
 // @match        https://sourcegraph.com/*
@@ -17,7 +17,7 @@
   const PREFIX = 'MSFS'
   const noop = function() {}
   const { logger, LogLevels } = (function() {
-    let defaultLevel = 4 // error level
+    let defaultLevel = 3 // warn level
     let logMethods = ['trace', 'debug', 'info', 'warn', 'error']
 
     function Logger() {
@@ -87,6 +87,7 @@
   }
 
   function createFontController({ codeArea, dropdown }) {
+    const DEFAULT_SIZE = '12'
     const fontSizeController = document.createElement('div'),
       label = document.createElement('span'),
       input = document.createElement('input'),
@@ -95,23 +96,23 @@
     label.innerText = 'font-size'
 
     input.type = 'range'
-    input.min = '12'
+    input.min = DEFAULT_SIZE
     input.max = '17'
     input.step = '1'
-    input.value = '12'
+    input.value = DEFAULT_SIZE
     input.style.margin = '0 0.5rem'
 
     indicator.style.display = 'inline-block'
     // prevent layout from changing while the character is not monospaced
     indicator.style.width = '17px'
-    indicator.innerText = '12'
+    indicator.innerText = DEFAULT_SIZE
 
     fontSizeController.appendChild(label)
     fontSizeController.appendChild(input)
     fontSizeController.appendChild(indicator)
 
     function sizeChangeHandlerFactory(_codeArea) {
-      return function(event) {
+      return function() {
         const newSize = input.value
 
         indicator.innerText = newSize
@@ -131,6 +132,7 @@
 
         sizeChangeHandler = sizeChangeHandlerFactory(codeArea)
         input.addEventListener('input', sizeChangeHandler)
+        sizeChangeHandler()
       }
     }
   }
@@ -277,6 +279,7 @@
       function ensureCriticalElement(reload = false) {
         const MAX_RETRY_COUNT = 10
         const RETRY_DELAY = 1000
+
         let tried = 0
         let lastNavRoot = navRoot
         let lastCodeArea = codeArea
@@ -288,9 +291,11 @@
             if (navRoot && codeArea) {
               if (reload && lastCodeArea === codeArea) {
                 if (++tried > MAX_RETRY_COUNT) {
-                  rej('max retry count reached, plugin failed to reload')
+                  logger.warn('max retry count reached, plugin failed to reload or reload is not needed')
                   return
                 }
+                // supress log
+                // logger.debug('failed to detect critical element changes, retrying...')
                 setTimeout(queryElement, RETRY_DELAY, reload)
                 return
               }
@@ -394,7 +399,7 @@
     return new Plugin()
   })()
 
-  logger.setLevel(LogLevels.debug)
+  // logger.setLevel(LogLevels.debug)
   plugin.registerComponent('font-controller', createFontController)
 
   //===============================Danger Zone===============================
