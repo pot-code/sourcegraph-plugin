@@ -2,7 +2,7 @@
 
 SourceGraph 是个搜索源码，查看源码的网站，使用起来十分趁手。但是字体太小感觉眼睛都要看瞎，于是有了做一个调整字体大小的插件的想法。
 
-经过几天的耕耘，终于实现了调整字体大小的功能。但是！！！既然放了一个 settings 按钮，怎么只能满足于只做一个字条调整功能，于是又大刀阔斧进行了重构，加入了插件系统，可以接入更多的功能。
+经过几天的耕耘，终于实现了调整字体大小的功能。但是！！！既然放了一个 settings 按钮，怎么只能满足于只做一个字体调整功能，于是又大刀阔斧进行了重构，加入了插件系统，可以接入更多的功能。
 
 ## 注册组件
 
@@ -31,12 +31,16 @@ function createXxxxx({ codeArea, dropdown } /* 插件自动注入的依赖 */) {
     root: HTMLElement, // 组件根元素
     reload: Function, // 依赖发生变化时，组件需要更新的操作
     uninstall: Function, // 插件卸载时进行的清理工作
-    style: string // 插件定义的 css 样式。样式会注册到页面全局，这样组件内部元素可以直接使用 className 赋予样式，也可以覆盖页面的样式
+    // 插件定义的 css 样式。样式会注册到页面全局
+    // 这样组件内部元素可以直接使用 className 赋予样式，也可以覆盖页面自身定义的样式
+    style: string
   };
 }
 ```
 
 # API
+
+| 带 * 的方法需要谨慎调用，可能会破坏插件的正常使用
 
 ## logger
 
@@ -50,7 +54,7 @@ logger.warn(msg:string);
 logger.error(msg:string);
 ```
 
-`logger.setLevel(LogLevels.trace|debug|info|warn|error)`，设置全局日志等级
+`*logger.setLevel(LogLevels.trace|debug|info|warn|error)`，设置全局日志等级
 
 ## plugin
 
@@ -59,4 +63,11 @@ logger.error(msg:string);
 - name，组件名称，需要唯一
 - definition，组件定义方法
 
-`plugin.init()`，初始化组件方法
+`*plugin.init()`，初始化组件方法
+
+`*plugin.addReloadListener(target, event, shouldReload, capture)`，注册可能导致插件更新的监听器
+
+- `target:HTMLElement`，导致更新的事件来源元素
+- `event:string`，事件名称
+- `shouldReload:(event:Event)=>boolean`，事件触发时，是否会导致插件更新
+- `capture:boolean`，是否监听事件的 capture 流程

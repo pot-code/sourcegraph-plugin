@@ -94,10 +94,10 @@
     label.innerText = 'font-size';
 
     input.type = 'range';
-    input.min = 12;
-    input.max = 17;
-    input.step = 1;
-    input.value = 12;
+    input.min = '12';
+    input.max = '17';
+    input.step = '1';
+    input.value = '12';
     input.style.margin = '0 0.5rem';
 
     indicator.style.display = 'inline-block';
@@ -115,7 +115,7 @@
 
         indicator.innerText = newSize;
         _codeArea.style.fontSize = `${newSize}px`;
-        logger.debug(`new font size is ${newSize}`);
+        // logger.debug(`new font size is ${newSize}`);
       }
     }
 
@@ -254,8 +254,10 @@
       let initialized = false;
       let navRoot = getNavRoot();
       let codeArea = getCodeArea();
+			let navItem = null;
+			let dropdown = null;
 
-      function reloadComponent(newDep, name, definition) {
+      function reloadComponent(newDep, name, component) {
         component.reload && component.reload(newDep);
         logger.debug(`component ${name} is reloaded`);
       }
@@ -269,18 +271,29 @@
         logger.debug(`component ${name} is initialized`);
       }
 
-      function ensureCriticalElement() {
+			function ensureCriticalElement(reload = false) {
         const MAX_RETRY_COUNT = 10;
         const RETRY_DELAY = 1000;
         let tried = 0;
+				let lastNavRoot = navRoot;
+				let lastCodeArea = codeArea;
 
         return new Promise((res, rej) => {
           function queryElement() {
-            [navRoot, codeArea] = [getNavRoot(), getCodeArea()];
+						[navRoot, codeArea] = [reload ? navRoot : getNavRoot(), getCodeArea()];
 
             if (navRoot && codeArea) {
-              tried = 0;
-              res({ navRoot, codeArea });
+							if (reload && lastCodeArea === codeArea) {
+								if (++tried > MAX_RETRY_COUNT) {
+									rej('max retry count reached, plugin failed to reload');
+									return;
+								}
+								setTimeout(queryElement, RETRY_DELAY, reload);
+								return;
+							}
+							tried = 0;
+							[lastNavRoot, lastCodeArea] = [navRoot, codeArea];
+							res({ navRoot, codeArea });
               logger.debug('critical path created, initializing plugin...');
             } else {
               logger.debug('failed to detect critical element, retrying...');
@@ -297,21 +310,26 @@
 
       /**
        * @param name {string} component name
-       * @param definition {(dep, plugin:Plugin)=>{uninstall:Function, reload:Function, style: string, root:HTMLElement}} component object
+       * @param definition {(dep, plugin:Plugin)=>{uninstall?:Function, reload?:Function, style?: string, root?:HTMLElement}} component object
        */
       this.registerComponent = (name, definition) => {
         if ((name in definition) || (name in components)) {
-          logger.warn(`component ${name} is already registered, registration canceled`);
+          logger.warn(`component ${name} is already registered, registration cancelled`);
           return;
         }
         mapAddEntry(definitions, name, definition);
       }
 
-      this.reload = (newDep) => {
-        mapIterator(components, function (name, definition) {
-          reloadComponent(newDep, name, definition);
-        })
-      }
+			this.reload = () => {
+				ensureCriticalElement(true).then(({ codeArea }) => {
+					return { navItem, codeArea, dropdown }
+				}).then(newDep => {
+					mapIterator(components, function (name, component) {
+						reloadComponent(newDep, name, component);
+					})
+					logger.debug('plugin reloaded');
+				}).catch(err => { logger.error(err) });
+			}
 
       const initComponents = (dep) => {
         mapIterator(definitions, function (name, definition) {
@@ -319,26 +337,37 @@
         })
       }
 
-      this.init = () => {
-        return ensureCriticalElement().then(({ navRoot, codeArea }) => {
-          let navItem = initNavItem(navRoot);
+			this.init = () => {
+				return ensureCriticalElement().then(({ navRoot, codeArea }) => {
+					navItem = initNavItem(navRoot);
+					dropdown = initDropdownMenu(navItem);
 
-          return {
-            navItem,
-            codeArea,
-            dropdown: initDropdownMenu(navItem)
+					return { navItem, codeArea, dropdown }
+				}).then(dep => {
+					initComponents(dep);
+					patch_style(styles.join('\n'));
+
+					stylePatched = true;
+					initialized = true;
+				});
+			}
+
+			/**
+			 * @param target {HTMLElement} event source element which may change the dependencies
+			 * @param event {string} event name
+			 * @param shouldReload {(event:Event)=>boolean} should trigger the reload
+			 * @param capture should event be capture type
+			 */
+      this.addReloadListener = (target, event, shouldReload, capture = false) => {
+        shouldReload = shouldReload.bind(target);
+
+        let handler = (_event) => {
+          if (shouldReload(_event)) {
+            this.reload();
+            logger.debug(`plugin will reload due to the ${event} event on ${target}`);
           }
-        }).then(dep => {
-          initComponents(dep);
-          patch_style(styles.join('\n'));
+        }
 
-          stylePatched = true;
-          initialized = true;
-        });
-      }
-
-      this.addReloadListener = (target, event, handler, capture = false) => {
-        handler = handler.bind(target);
         target.addEventListener(event, handler, capture);
         reloadListeners.push({
           target, event, handler, capture, dispose: function () {
@@ -346,16 +375,23 @@
           }
         })
       }
-    }
+		}
 
-    return new Plugin();
-  }());
+		return new Plugin();
+	}());
 
-  logger.setLevel(LogLevels.debug);
-  plugin.registerComponent('font-controller', createFontController);
-  
+	logger.setLevel(LogLevels.debug);
+	plugin.registerComponent('font-controller', createFontController);
+
   //===================================Danger Zone===================================
-  plugin.init().catch(err => {
+  plugin.init().then(() => {
+
+    plugin.addReloadListener(document.querySelector('#explorer > div.tree > table > tbody > tr > td > div > table'), 'click', function (event) {
+      let target = event.target;
+
+      return target.tagName === 'A' && target.className === 'tree__row-contents'
+    });
+  }).catch(err => {
     logger.error(err);
   });
   //=================================================================================
