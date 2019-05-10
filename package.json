@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "husky": "^2.2.0",
+    "prettier": "^1.17.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "prettier --write && git add"
+    }
+  }
+}
