@@ -40,7 +40,7 @@ function createXxxxx({ codeArea, dropdown } /* 插件自动注入的依赖 */) {
 
 # API
 
-| 带 * 的方法需要谨慎调用，可能会破坏插件的正常使用
+> 带 * 的方法需要谨慎调用，可能会破坏插件的正常使用
 
 ## logger
 
