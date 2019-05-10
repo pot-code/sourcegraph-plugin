@@ -353,9 +353,7 @@
 
   logger.setLevel(LogLevels.debug);
   plugin.registerComponent('font-controller', createFontController);
-  // register your components here:
-  // plugin.registerComponent('component name', componentDefinition);
-
+  
   //===================================Danger Zone===================================
   plugin.init().catch(err => {
     logger.error(err);
