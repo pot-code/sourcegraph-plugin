@@ -250,15 +250,15 @@
   }
       `
 
-      const definitions = new Map()
-      const components = new Map()
-      const reloadListeners = []
-      const styles = [defaultStyles]
+      const definitions = new Map() // 组件定义表
+      const components = new Map() // 组件实例表
+      const reloadListeners = [] // 导致插件需要重载的监听器列表
+      const styles = [defaultStyles] // 注入样式
 
       let stylePatched = false
       let initialized = false
-      let navRoot = getNavRoot()
-      let codeArea = getCodeArea()
+      let navRoot = getNavRoot() // 工具栏根元素
+      let codeArea = getCodeArea() // 代码显示区
       let navItem = null
       let dropdown = null
 
