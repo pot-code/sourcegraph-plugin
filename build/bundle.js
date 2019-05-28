@@ -12,21 +12,25 @@
   'use strict'
 
   const PREFIX = 'MSFS'
+  const CODE_AREA_PATH = 'div.blob.blob-page__blob'
+  const NAV_ROOT_PATH =
+    '#root > div.layout > div.layout__app-router-container.layout__app-router-container--full-width > div > nav > ul:nth-child(7)'
 
   const defaultLevel = 3,
     logMethods = ['trace', 'debug', 'info', 'warn', 'error'],
     noop = function() {} // warn level
-  function Logger() {
-    function a(a) {
-      logMethods.forEach((b, c) => {
-        this[b] = c < a ? noop : console['debug' === b ? 'log' : b].bind(console, `[${PREFIX}][${b.toUpperCase()}]:`)
-      })
+  class Logger {
+    constructor() {
+      function a(a) {
+        logMethods.forEach((b, c) => {
+          this[b] = c < a ? noop : console['debug' === b ? 'log' : b].bind(console, `[${PREFIX}][${b.toUpperCase()}]:`)
+        })
+      }
+      ;(this.setLevel = b => {
+        a.call(this, b)
+      }),
+        a.call(this, defaultLevel)
     }
-    const b = this
-    ;(b.setLevel = c => {
-      a.call(b, c)
-    }),
-      a.call(b, defaultLevel)
   }
   const logger = new Logger()
   const LogLevels = logMethods.reduce((a, b, c) => ((a[b] = c), a), {})
@@ -39,14 +43,19 @@
   }
   /**
    * hepler function to iterate map object
-   * @param {Map|Object} mapLikeObject
-   * @param {(key, value)=>any} fn function to call on map entry
+   * @param mapLikeObject
+   * @param fn function to call on each map entry
    */ function mapIterator(a, b) {
     '[object Map]' === Object.prototype.toString.call(a)
       ? a.forEach((a, c) => b(c, a))
       : Object.keys(a).forEach(c => b(c, a[c]))
   }
-  function mapAddEntry(a, b, c) {
+  /**
+   * helper function to add entry to a map like object
+   * @param mapLikeObject
+   * @param key
+   * @param value
+   */ function mapAddEntry(a, b, c) {
     '[object Map]' === Object.prototype.toString.call(a) ? a.set(b, c) : (a[b] = c)
   }
   function initNavItem(a) {
@@ -91,12 +100,10 @@
     )
   }
   function getNavRoot() {
-    return document.querySelector(
-      '#root > div.layout > div.layout__app-router-container.layout__app-router-container--full-width > div > nav > ul:nth-child(7)'
-    )
+    return document.querySelector(NAV_ROOT_PATH)
   }
   function getCodeArea() {
-    return document.querySelector('div.blob.blob-page__blob')
+    return document.querySelector(CODE_AREA_PATH)
   }
   function patch_style(a) {
     const b = document.createElement('style')
@@ -106,139 +113,138 @@
       logger.debug(a),
       logger.debug('==========================================================')
   }
-  const plugin = (function() {
-    return new (function() {
-      function a(a, b, c) {
-        c.reload && c.reload(a), logger.debug(`component ${b} is reloaded`)
+  const defaultStyles = `
+.${PREFIX}-settings{
+	padding: 0.3em 0.5em;
+	position: absolute;
+	display: none;
+	top: 0;
+	right: 10px;
+}
+.${PREFIX}-settings__item{
+	display: flex;
+	align-items: center;
+	margin-bottom: 6px;
+}
+.${PREFIX}-settings__item:last-child{
+	margin-bottom: 0;
+}
+div.blob.blob-page__blob{
+	font-size: 12px;
+}
+code.blob__code.e2e-blob{
+	font-size: inherit;
+	line-height: 1.33;
+}`,
+    definitions = new Map(),
+    components = new Map(),
+    reloadListeners = [],
+    styles = [defaultStyles] // 注入样式
+  let navRoot = getNavRoot(),
+    codeArea = getCodeArea(),
+    navItem = null,
+    dropdown = null // 工具栏根元素
+  function ensureCriticalElement(a = !1) {
+    const b = 10,
+      c = 1e3
+    let d = 0,
+      e = navRoot,
+      f = codeArea
+    return new Promise((g, h) => {
+      function i() {
+        if ((([navRoot, codeArea] = [a ? navRoot : getNavRoot(), getCodeArea()]), navRoot && codeArea)) {
+          if (a && f === codeArea)
+            return ++d > b
+              ? void logger.warn('max retry count reached, plugin failed to reload or reload is not needed')
+              : void setTimeout(i, c, a)
+          ;(d = 0),
+            ([e, f] = [navRoot, codeArea]),
+            g({ navRoot, codeArea }),
+            logger.debug('critical path created, initializing plugin...')
+        } else {
+          if ((logger.debug('failed to detect critical element, retrying...'), ++d > b))
+            return void h('max retry count reached, plugin failed to initialize')
+          setTimeout(i, c)
+        }
       }
-      function b(a, b, c, d) {
+      i()
+    })
+  }
+  class Plugin {
+    constructor() {
+      function a(a, b, c, d) {
         let e = c(a, d)
-        h.push(e.style),
-          f.set(b, e),
+        styles.push(e.style),
+          components.set(b, e),
           e.root && e.root.classList.add(`${PREFIX}-settings__item`),
           logger.debug(`component ${b} is initialized`)
       }
-      function c(a = !1) {
-        const b = 10,
-          c = 1e3
-        let d = 0,
-          e = k,
-          f = l
-        return new Promise((g, h) => {
-          function i() {
-            if ((([k, l] = [a ? k : getNavRoot(), getCodeArea()]), k && l)) {
-              if (a && f === l)
-                return ++d > b
-                  ? void logger.warn('max retry count reached, plugin failed to reload or reload is not needed')
-                  : void setTimeout(i, c, a)
-              ;(d = 0),
-                ([e, f] = [k, l]),
-                g({ navRoot: k, codeArea: l }),
-                logger.debug('critical path created, initializing plugin...')
-            } else {
-              if ((logger.debug('failed to detect critical element, retrying...'), ++d > b))
-                return void h('max retry count reached, plugin failed to initialize')
-              setTimeout(i, c)
-            }
-          }
-          i()
+      function b(b) {
+        mapIterator(definitions, function(d, e) {
+          a(b, d, e, c)
         })
       }
-      /**
-       * @param name {string} component name
-       * @param definition {(dep, plugin:Plugin)=>{uninstall?:Function, reload?:Function, style?: string, root?:HTMLElement}} component object
-       */ const d = this,
-        e = new Map(),
-        f = new Map(),
-        g = [],
-        h = [
-          `
-  .${PREFIX}-settings{
-    padding: 0.3em 0.5em;
-    position: absolute;
-    display: none;
-    top: 0;
-    right: 10px;
-  }
-  .${PREFIX}-settings__item{
-    display: flex;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-  .${PREFIX}-settings__item:last-child{
-    margin-bottom: 0;
-  }
-  div.blob.blob-page__blob{
-    font-size: 12px;
-  }
-  code.blob__code.e2e-blob{
-    font-size: inherit;
-    line-height: 1.33;
-  }
-      `
-        ] // 注入样式
-      let j = !1,
-        k = getNavRoot(),
-        l = getCodeArea(),
-        m = null,
-        n = null
-      ;(this.registerComponent = (a, b) =>
-        a in b || a in f
-          ? void logger.warn(`component ${a} is already registered, registration cancelled`)
-          : void mapAddEntry(e, a, b)),
-        (this.reload = () => {
-          c(!0)
-            .then(({ codeArea: a }) => ({ navItem: m, codeArea: a, dropdown: n }))
-            .then(b => {
-              mapIterator(f, function(c, d) {
-                a(b, c, d)
-              }),
-                logger.debug('plugin reloaded')
-            })
-            .catch(a => {
-              logger.error(a)
-            })
-        })
-      const o = a => {
-        mapIterator(e, function(c, e) {
-          b(a, c, e, d)
-        })
+      const c = this
+      let d = !1
+      this.init = () =>
+        d
+          ? Promise.resolve()
+          : ensureCriticalElement()
+              .then(
+                ({ navRoot: a, codeArea: b }) => (
+                  (navItem = initNavItem(a)), (dropdown = initDropdownMenu(navItem)), { navItem, codeArea: b, dropdown }
+                )
+              )
+              .then(a => {
+                b(a), patch_style(styles.join('\n')), (d = !0)
+              })
+    }
+    /**
+     * @param target event source element which may change the dependencies
+     * @param event event name
+     * @param shouldReload should trigger the reload
+     * @param capture should event be capture type
+     */ addReloadListener(a, b, c, d = !1) {
+      c = c.bind(a)
+      let e = d => {
+        c(d) && (this.reload(), logger.debug(`plugin will reload due to the ${b} event on ${a}`))
       }
-      /**
-       * @param target {HTMLElement} event source element which may change the dependencies
-       * @param event {string} event name
-       * @param shouldReload should trigger the reload
-       * @param capture should event be capture type
-       */ ;(this.init = () =>
-        c()
-          .then(
-            ({ navRoot: a, codeArea: b }) => (
-              (m = initNavItem(a)), (n = initDropdownMenu(m)), { navItem: m, codeArea: b, dropdown: n }
-            )
-          )
-          .then(a => {
-            o(a), patch_style(h.join('\n')), (j = !0)
-          })),
-        (this.addReloadListener = (a, b, c, d = !1) => {
-          c = c.bind(a)
-          let e = d => {
-            c(d) && (this.reload(), logger.debug(`plugin will reload due to the ${b} event on ${a}`))
+      a.addEventListener(b, e, d),
+        reloadListeners.push({
+          target: a,
+          event: b,
+          handler: e,
+          capture: d,
+          dispose: function() {
+            a.removeEventListener(b, e, d)
           }
-          a.addEventListener(b, e, d),
-            g.push({
-              target: a,
-              event: b,
-              handler: e,
-              capture: d,
-              dispose: function() {
-                a.removeEventListener(b, e, d)
-              }
-            })
         })
-    })()
-  })()
+    }
+    reload() {
+      function a(a, b, c) {
+        c.reload && c.reload(a), logger.debug(`component ${b} is reloaded`)
+      }
+      ensureCriticalElement(!0)
+        .then(({ codeArea: a }) => ({ navItem, codeArea: a, dropdown }))
+        .then(b => {
+          mapIterator(components, function(c, d) {
+            a(b, c, d)
+          }),
+            logger.debug('plugin reloaded')
+        })
+        .catch(a => {
+          logger.error(a)
+        })
+    }
+    registerComponent(a, b) {
+      return a in b || a in components
+        ? void logger.warn(`component ${a} is already registered, registration cancelled`)
+        : void mapAddEntry(definitions, a, b)
+    }
+  }
+  const plugin = new Plugin()
 
-  function createFontController({ codeArea: a, dropdown: b }) {
+  const createFontController = ({ codeArea: a, dropdown: b }) => {
     function c(a) {
       return function() {
         const b = f.value
@@ -275,8 +281,8 @@
     )
   }
 
-  //===============================Danger Zone===============================
-  plugin.registerComponent('font-controller', createFontController),
+  logger.setLevel(LogLevels.debug),
+    plugin.registerComponent('font-controller', createFontController),
     plugin
       .init()
       .then(() => {

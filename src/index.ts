@@ -1,8 +1,8 @@
 import { plugin } from './core'
-import { logger } from './logger'
+import { logger, LogLevels } from './logger'
 import { createFontController } from './fontControl'
 
-// logger.setLevel(LogLevels.debug)
+logger.setLevel(LogLevels.debug)
 plugin.registerComponent('font-controller', createFontController)
 
 //===============================Danger Zone===============================
@@ -19,7 +19,7 @@ plugin
       }
     )
   })
-  .catch(err => {
+  .catch((err: any) => {
     logger.error(err)
   })
 //=========================================================================

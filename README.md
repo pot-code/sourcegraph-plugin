@@ -75,4 +75,3 @@ logger.error(msg:string);
 # TODO
 
 - [ ] 切换 repo 时失效
-- [ ] 更好的类型提示

@@ -1,4 +1,6 @@
-export function createFontController({ codeArea, dropdown }) {
+import { IPluginComponentDefinition } from './core'
+
+export const createFontController: IPluginComponentDefinition = ({ codeArea, dropdown }) => {
   const DEFAULT_SIZE = '12'
   const fontSizeController = document.createElement('div'),
     label = document.createElement('span'),
@@ -29,7 +31,6 @@ export function createFontController({ codeArea, dropdown }) {
 
       indicator.innerText = newSize
       _codeArea.style.fontSize = `${newSize}px`
-      // logger.debug(`new font size is ${newSize}`);
     }
   }
 
