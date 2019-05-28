@@ -71,3 +71,8 @@ logger.error(msg:string);
 - `event:string`，事件名称
 - `shouldReload:(event:Event)=>boolean`，事件触发时，是否会导致插件更新
 - `capture:boolean`，是否监听事件的 capture 流程
+
+# TODO
+
+- [ ] 切换 repo 时失效
+- [ ] 更好的类型提示
