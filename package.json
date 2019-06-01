@@ -11,11 +11,12 @@
     "rollup-plugin-node-resolve": "^5.0.0"
   },
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c",
+    "release": "NODE_ENV=production && sh script/release.sh"
   },
   "husky": {
     "hooks": {
-      "pre-commit": "yarn build && git add build/* && lint-staged"
+      "pre-commit": "lint-staged"
     }
   },
   "lint-staged": {

@@ -1,13 +1,9 @@
-const { execSync } = require('child_process')
-
 // get latest version tag as version value
-let version
-try {
-  version = execSync('git describe --abbrev=0 --tag', { stdio: ['ignore', 'pipe', 'ignore'] })
-    .toString()
-    .trimRight()
-} catch (error) {
-  throw Error(`can't find any tags, you may use 'git tag' to assign a tag to your commit first`)
+const version = process.env.RELEASE_VERSION
+const isProduction = process.env.NODE_ENV === 'production'
+
+if (isProduction && !version) {
+  throw Error(`can't get version number, be sure to use 'yarn release' instead of invoking this file directly`)
 }
 
 export default `
