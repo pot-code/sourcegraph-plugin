@@ -1,0 +1,16 @@
+{
+	"presets": [
+		[
+			"minify",
+			{
+				"removeConsole": false
+			}
+		],
+		[
+			"@babel/preset-typescript",
+			{
+				"modules": false
+			}
+		]
+	]
+}

@@ -2,15 +2,15 @@
 
 SourceGraph 是个搜索源码，查看源码的网站，使用起来十分趁手。但是字体太小感觉眼睛都要看瞎，于是有了做一个调整字体大小的插件的想法。
 
-经过几天的耕耘，终于实现了调整字体大小的功能。但是！！！既然放了一个 settings 按钮，怎么只能满足于只做一个字体调整功能，于是又大刀阔斧进行了重构，加入了插件系统，可以接入更多的功能。
+经过几天的耕耘，终于实现了调整字体大小的功能。但是！！！既然放了一个 settings 按钮，怎么能满足于只做一个字体调整功能，于是又大刀阔斧进行了重构，加入了插件系统，可以接入更多的功能。
 
 ## 注册组件
 
 注册组件请在文件末尾进行：
 
 ```javascript
-logger.setLevel(LogLevels.debug);
-plugin.registerComponent("font-controller", createFontController);
+logger.setLevel(LogLevels.debug)
+plugin.registerComponent('font-controller', createFontController)
 // 在这注册你的组件:
 // plugin.registerComponent('组件名', 组件定义方法);
 ```
@@ -29,18 +29,18 @@ function createXxxxx({ codeArea, dropdown } /* 插件自动注入的依赖 */) {
   return {
     // 以下属性均选填，不强制要求
     root: HTMLElement, // 组件根元素
-    reload: Function, // 依赖发生变化时，组件需要更新的操作
-    uninstall: Function, // 插件卸载时进行的清理工作
+    reload: Function, // 依赖发生变化时，若组件需要进行一些重新绑定的操作，可以导出此方法
+    uninstall: Function, // 插件卸载时会调用此方法
     // 插件定义的 css 样式。样式会注册到页面全局
     // 这样组件内部元素可以直接使用 className 赋予样式，也可以覆盖页面自身定义的样式
     style: string
-  };
+  }
 }
 ```
 
 # API
 
-> 带 * 的方法需要谨慎调用，可能会破坏插件的正常使用
+> 带 \* 的方法需要谨慎调用，可能会破坏插件的正常使用
 
 ## logger
 
@@ -71,3 +71,7 @@ logger.error(msg:string);
 - `event:string`，事件名称
 - `shouldReload:(event:Event)=>boolean`，事件触发时，是否会导致插件更新
 - `capture:boolean`，是否监听事件的 capture 流程
+
+# TODO
+
+- [ ] 切换 repo 时失效
